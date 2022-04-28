@@ -1,4 +1,4 @@
-<img src="https://user-images.githubusercontent.com/91875613/165704060-6c390969-6308-4ba6-8677-0347e060426b.JPG" width="400" alt="One floor of 3D printed ObentoMiraikan is placed on an iPad" align="right" />
+<img src="https://user-images.githubusercontent.com/91875613/165704060-6c390969-6308-4ba6-8677-0347e060426b.JPG" width="350" alt="One floor of 3D printed ObentoMiraikan is placed on an iPad" align="right" />
 
 # ObentoMiraikan
 
