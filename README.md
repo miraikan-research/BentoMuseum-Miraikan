@@ -13,7 +13,7 @@ in ASSETS 2022 (Technical paper)
 
 ## About
 This iOS app provides audio-tactile interactions to the [3D-printed stackable museum floor maps](https://www.thingiverse.com/thing:5555502).  
-Text-to-speech audio explanations are given when a user touches the interactive parts (exhibits and structural attractions) when a 3D-printed floor is on the iPad. 
+Text-to-speech audio explanations are given when a user touches the interactive parts (exhibits and structural attractions) when a 3D-printed floor is on an iPad. 
 
 ## Environment
 - Target OS
@@ -52,3 +52,7 @@ Text-to-speech audio explanations are given when a user touches the interactive 
       - LSSupportsOpeningDocumentsInPlace (Supports opening documents in place)
     ```
 6. In Xcode, select your target system, build and run.
+
+#### Contact
+
+If you have any question in using the project, please contact Xiyue Wang (wang.xiyue@lab.miraikan.jst.go.jp). We are happy to explain the project to you.	
