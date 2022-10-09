@@ -55,6 +55,5 @@ Text-to-speech audio explanations are given when a user touches the interactive 
     ```
 6. In Xcode, select your target system, build and run.
 
-#### Contact
-
+## Contact
 If you have any question in using the project, please contact Xiyue Wang (wang.xiyue@lab.miraikan.jst.go.jp). We are happy to explain the project to you.	
