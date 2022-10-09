@@ -32,7 +32,7 @@ Text-to-speech audio explanations are given when a user touches the interactive 
   - Xcode 13.4.1 and Apple Development Certificate
       
 ## Build
-1. In Unity, open the scene *V2_7F_Graph* in scenes folder.
+1. In Unity, open the scene *V2_7F_Graph.unity* in *BentoMuseum-Miraikan -> Assets -> Scenes* folder.
 2. In Unity, set iOS build (a [tutorial](http://www.monobitengine.com/doc/mun/contents/Platform/Build_iOS.htm) in Japanese).
     - Scenes in build: *V2_7F_Graph*
     - Run in Xcode as: *Debug* (to print Debug.Log in Xcode)
