@@ -45,7 +45,7 @@ Text-to-speech audio explanations are given when a user touches the interactive 
       - Privacy – Microphone Usage Description      
       - Privacy – Speech Recognition Usage Description
       ```
-5. In Xcode, add log data-saving (to iOS files) permissions in Xcode (Optional: if you want to save double-tap's log data). 
+5. In Xcode, add log data-saving (to iOS files) permissions in Xcode. (Optional: if you want to save double-tap's log data)
     - In Unity-iPhone's *info.plist*, add following *Custom iOS Target Properties* and set them to YES.
     ```
       - UIFileSharingEnabled (Application supports iTunes file sharing)
