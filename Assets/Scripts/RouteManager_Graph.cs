@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 
 public class RouteManager_Graph : MonoBehaviour
 {
@@ -11,6 +12,12 @@ public class RouteManager_Graph : MonoBehaviour
     List<Transform> routeNavNodes;
     List<string> routeNavDirections;
     List<string[]> routeNavDirectionsTurn;
+
+    List<Transform> guide_NavNodes;
+    List<string> guide_Directs;
+    List<string> guide_NavDirections;
+    List<string[]> guide_NavDirectionsTurn;
+    List<string> guide_NavDistance;
 
     bool directionMode = false;
 
@@ -109,6 +116,11 @@ public class RouteManager_Graph : MonoBehaviour
         directionMode = !directionMode;
     }
 
+    public void DirectionModeTrue()
+    {
+        directionMode = true;
+    }
+
     public string RouteFindAround(Transform pMain)
     {
         string msg = "";
@@ -163,6 +175,183 @@ public class RouteManager_Graph : MonoBehaviour
             Debug.Log(msg);
         }
         return mlrChild;
+    }
+
+    private List<Transform> Guide_FindNavNodes()
+    {
+        List<Transform> nodes = new List<Transform>();
+        guide_Directs = new List<string>();
+
+        int[] route_1 = new int[] { 0, 3, 4, 5 };
+        int[] route_2 = new int[] { 5, 4, 3, 0, 1, 2 };
+        int[] route_3 = new int[] { 2, 1, 0 };
+
+        // add lobby
+        Transform obj = GameObject.Find("5F").transform.Find("Lobby");
+        nodes.Add(obj);
+        guide_Directs.Add("V");
+
+        for (int i = 0; i < route_1.Length; i++)
+        {
+            Transform mainPath = GameObject.Find("5F").transform.Find(route_1[i].ToString());
+            Transform[] allChildren = mainPath.GetComponentsInChildren<Transform>();
+            Transform[] oChildren = allChildren.OrderBy(order => order.position.y).ToArray();
+            nodes.Add(oChildren[0]);
+
+            if (i == route_1.Length-1)
+            {
+                oChildren = allChildren.OrderBy(order => order.position.x).ToArray();
+                nodes.Add(oChildren[0]);
+
+                guide_Directs.Add("HV");
+                guide_Directs.Add("VH");
+            }
+            else
+                guide_Directs.Add("H");
+        }
+
+        for (int i = 0; i < route_2.Length; i++)
+        {
+            Transform mainPath = GameObject.Find("5F").transform.Find(route_2[i].ToString());
+            Transform[] allChildren = mainPath.GetComponentsInChildren<Transform>();
+            Transform[] oChildren = allChildren.OrderByDescending(order => order.position.y).ToArray();
+            nodes.Add(oChildren[0]);
+
+            if (i == route_2.Length - 1)
+                guide_Directs.Add("V");
+            else
+                guide_Directs.Add("H");
+
+        }
+
+        for (int i = 0; i < route_3.Length; i++)
+        {
+            Transform mainPath = GameObject.Find("5F").transform.Find(route_3[i].ToString());
+            Transform[] allChildren = mainPath.GetComponentsInChildren<Transform>();
+            Transform[] oChildren = allChildren.OrderBy(order => order.position.y).ToArray();
+            nodes.Add(oChildren[0]);
+
+            if (i != route_3.Length - 1)
+                guide_Directs.Add("H");
+        }
+
+        // add rocket engine
+        obj = GameObject.Find("5F").transform.Find("0");
+        nodes.Add(obj);
+        guide_Directs.Add("V");
+
+        //string dub_string = "";
+        //foreach (Transform item in nodes)
+        //{
+        //    dub_string += item.name;
+        //    dub_string += " ; ";
+        //}
+        //Debug.Log(dub_string);
+
+        //dub_string = "";
+        //foreach (string item in guide_Directs)
+        //{
+        //    dub_string += item;
+        //    dub_string += " ; ";
+        //}
+        //Debug.Log(dub_string);
+
+        //Debug.Log("Node count = " + nodes.Count());
+        //Debug.Log("guide_Directs count = " + guide_Directs.Count());
+
+        return nodes;
+    }
+
+    public void Guide_FindNodeDirectTurn()
+    {
+        guide_NavNodes = Guide_FindNavNodes();
+        guide_NavDirections = new List<string>();
+        guide_NavDirectionsTurn = new List<string[]>();
+        guide_NavDistance = new List<string>();
+
+        GameObject dummyStart = GameObject.Instantiate(guide_NavNodes[0].gameObject);
+        Vector3 dummyLoc = dummyStart.transform.position;
+        dummyStart.transform.position = new Vector3(dummyLoc.x-100, dummyLoc.y, dummyLoc.z);
+
+        List<Transform > dummy_guide_NavNodes = guide_NavNodes.ToList();
+        dummy_guide_NavNodes.Insert(0, dummyStart.transform);
+
+
+        for (int i = 0; i < guide_NavNodes.Count-1; i++)
+        {
+            guide_NavDirections.Add(GetDirection(guide_NavNodes[i], guide_NavNodes[i + 1], guide_Directs[i]));
+            //guide_NavDirectionsTurn.Add(new string[] { GetDirection(guide_NavNodes[i], guide_NavNodes[i + 1], guide_Directs[i]) });
+            guide_NavDirectionsTurn.Add(getDirectionTurnByTurn(dummy_guide_NavNodes[i], dummy_guide_NavNodes[i + 1], dummy_guide_NavNodes[i + 2]));
+
+            // add distance
+            string dist_0 = "1";
+            string dist_1 = " センチ　";
+            if (i == 0)
+                dist_0 = "2.5";
+            else if (i == 3)
+                dist_0 = "1.5";
+            else if (i == 4) // Oval bright
+                dist_0 = "1.5";
+            else if (i == 5) // Oval bright
+                dist_0 = "5|1";
+            else if (i == 9)
+                dist_0 = "0.5";
+            else if (i == 10)
+                dist_0 = "0.5";
+            else if (i == 11)
+                dist_0 = "3";
+            else if (i == 13)
+                dist_0 = "0.5";
+            else if (i == 14)
+                dist_0 = "3";
+
+            guide_NavDistance.Add(dist_0 + dist_1);
+
+        }
+
+        dummyStart.SetActive(false);
+
+        //string dub_string = "";
+        //foreach (string item in guide_NavDirections)
+        //{
+        //    dub_string += item;
+        //    dub_string += " ; ";
+        //}
+        //Debug.Log("guide_NavDirections count = " + guide_NavDirections.Count());
+        //Debug.Log(dub_string);
+
+        //string dub_string = "";
+        //foreach (string[] items in guide_NavDirectionsTurn)
+        //{
+        //    foreach (string item in items)
+        //    {
+        //        dub_string += item;
+        //        dub_string += ";";
+        //    }
+        //    dub_string += " . ";
+        //}
+        //Debug.Log("guide_NavDirectionsTurn count = " + guide_NavDirectionsTurn.Count());
+        //Debug.Log(dub_string);
+    }
+
+    public List<Transform> GetGuide_NavRoute()
+    {
+        return guide_NavNodes;
+    }
+
+    public List<string> GetGuide_NavDirect()
+    {
+        return guide_NavDirections;
+    }
+
+    public List<string[]> GetGuide_NavDirectTurn()
+    {
+        return guide_NavDirectionsTurn;
+    }
+
+    public List<string> GetGuide_NavDistance()
+    {
+        return guide_NavDistance;
     }
 
     public string RouteFindSpecific(Transform start, Transform end)
@@ -393,6 +582,19 @@ public class RouteManager_Graph : MonoBehaviour
             return child.GetChild(0).name + " ||| Child not correct. Please use other direction mode.";
     }
 
+    public string GetDirection(Transform p1, Transform p2, string direct)
+    {
+        if (direct == "H")
+            return getDirectionH(p1, p2);
+        else if (direct == "V")
+            return getDirectionV(p1, p2);
+        else if (direct == "HV")
+            return getDirectionHV(p1, p2);
+        else if (direct == "VH")
+            return getDirectionVH(p1, p2);
+        else
+            return "Direction string INCORRECT.";
+    }
 
     public string RouteString(Transform t)
     {
@@ -400,6 +602,18 @@ public class RouteManager_Graph : MonoBehaviour
             return "交差点";
         else
             return t.name;
+    }
+
+    public string RouteString_Guide(Transform t)
+    {
+        if (t.name == "Entrance_5F")
+            return "入り口";
+        else if (t.tag == "Route_Sub"　|| t.name == "0")
+            return "展示";
+        else if (t.tag == "Route_Main")
+            return "交差点";
+
+        return t.name;
     }
 
     public void InitializeFloorGraph(string floor)

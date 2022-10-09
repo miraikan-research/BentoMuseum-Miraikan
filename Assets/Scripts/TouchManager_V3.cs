@@ -34,11 +34,11 @@ public class TouchManager_V3 : MonoBehaviour
 
     // exploration
     //[SerializeField]
-    string floor = "3F";
+    string floor = "5F";
     ExhibitionScript prevEs = null;
 
     // navigation
-    enum DirectionState {Pre, Start, End}
+    enum DirectionState { Pre, Start, End, Guide }
     DirectionState directionState = DirectionState.Pre;
     int navigationOrder = 0;
     Transform pStart = null, pEnd = null;
@@ -56,7 +56,15 @@ public class TouchManager_V3 : MonoBehaviour
     int saveTime = 5 * 60 * 40; //5 min
     string hitObjectName;
     string navMode;
-    
+
+    //automated guide
+    string inst_Guide1, inst_Guide2;
+    Dictionary<string, ExhibitionScript> csvGuideData; // CSVの中身を入れるdict
+    List<string> inst1;
+    List<float> inst1_times;
+    bool touchEnabled = true;
+    int speakOrder = 0;
+
     void Start()
     {
         // viz: touch
@@ -76,8 +84,16 @@ public class TouchManager_V3 : MonoBehaviour
 
         InitializeCSVWriter();
 
+        //load automated text
+        (inst1, inst1_times) = LoadTextStrings("Instruct1_Overall");
+        inst_Guide1 = LoadText("Instruct2_GuideStart");
+        inst_Guide2 = LoadText("Instruct2_GuideStart_2");
+        csvGuideData = LoadCSV("5F_GuidedTour");
 
-
+        if (floor == "5F")
+        {
+            RouteManager_Graph.Instance.Guide_FindNodeDirectTurn();
+        }
     }
 
     private void InitializeFloor(string floor)
@@ -96,7 +112,18 @@ public class TouchManager_V3 : MonoBehaviour
         ModelPosManager.Instance.InitializeFloor(floor);
 
         // load csv file
-        LoadCSV(floor);
+        csvData = LoadCSV(floor);
+    }
+
+    #region Single Tap Buttons
+
+    void SaveOneClickButton(string buttonName)
+    {
+        //save Log
+        // headers: {"time", "mode", "modeDetail", "obj", "floor", "tapCount", "tapPhase", "loc_x", "loc_y"};
+
+        string[] saveLine = { GetSystemTime_milliSec(), GetMode(), navMode, buttonName, floor, null, null, null, null };
+        csvExporter.AppendCSV(saveLine);
     }
 
     public void OnClick_0F()
@@ -104,6 +131,8 @@ public class TouchManager_V3 : MonoBehaviour
         Debug.Log("Initialize 0F_key");
         floor = "0F";
         InitializeFloor(floor);
+
+        SaveOneClickButton("OnClick_0F");
     }
 
     public void OnClick_1F()
@@ -111,6 +140,8 @@ public class TouchManager_V3 : MonoBehaviour
         Debug.Log("Initialize 1F");
         floor = "1F";
         InitializeFloor(floor);
+
+        SaveOneClickButton("OnClick_1F");
     }
 
     public void OnClick_3F()
@@ -118,6 +149,8 @@ public class TouchManager_V3 : MonoBehaviour
         Debug.Log("Initialize 3F");
         floor = "3F";
         InitializeFloor(floor);
+
+        SaveOneClickButton("OnClick_3F");
     }
 
     public void OnClick_5F()
@@ -125,6 +158,8 @@ public class TouchManager_V3 : MonoBehaviour
         Debug.Log("Initialize 5F");
         floor = "5F";
         InitializeFloor(floor);
+
+        SaveOneClickButton("OnClick_5F");
     }
 
     public void OnClick_7F()
@@ -132,15 +167,57 @@ public class TouchManager_V3 : MonoBehaviour
         Debug.Log("Initialize 7F Exp");
         floor = "7F";
         InitializeFloor(floor);
+
+        SaveOneClickButton("OnClick_7F");
     }
 
-    public void OnClick_7F_Conf ()
+    public void OnClick_7F_Conf()
     {
         Debug.Log("Initialize 7F Conf");
         floor = "7F";
         InitializeFloor(floor);
         ModelPosManager.Instance.InitializeFloor(floor, "Conf");
+
+        SaveOneClickButton("OnClick_7F_Conf");
     }
+
+    public void OnClick_InstStart()
+    {
+        //touchEnabled = false;
+        StartCoroutine(StopStartSpeaking_DelayMethod_Auto(inst1, inst1_times));
+
+        SaveOneClickButton("OnClick_InstStart");
+    }
+
+    public void OnClick_InstGuide()
+    {
+        StopSpeaking();
+        StartCoroutine(StopStartSpeaking_DelayMethod_Button(inst_Guide1));
+        //StartCoroutine(StopStartSpeaking_DelayMethod_Button("テスト　テスト　テスト　もけー"));
+
+        RouteManager_Graph.Instance.DirectionModeTrue();
+        directionState = DirectionState.Guide;
+        Debug.Log("Direction Mode = " + RouteManager_Graph.Instance.IsDirectionMode());
+        navigationOrder = 0;
+
+        SaveOneClickButton("OnClick_InstGuide");
+    }
+
+    public void OnClick_Turn()
+    {
+        turnMode = !turnMode;
+        if (turnMode)
+        {
+            buttonTurnText.text = "Turn by turn: Y";
+        }
+        else
+        {
+            buttonTurnText.text = "Turn by turn: N";
+        }
+
+        SaveOneClickButton("turnMode = "+ turnMode);
+    }
+    #endregion
 
     #region Doublet tap buttons
 
@@ -166,13 +243,11 @@ public class TouchManager_V3 : MonoBehaviour
     public void OnClick_Stop()
     {
         StopSpeaking();
-        if ((RouteManager_Graph.Instance.IsDirectionMode()) || (directionState == DirectionState.Start))
+        if ((RouteManager_Graph.Instance.IsDirectionMode()) && (directionState == DirectionState.Start))
         {
             directionState = DirectionState.Pre;
             StartCoroutine(StopStartSpeaking_DelayMethod_Button("目的地を２回タップしてください。"));
-
         }
-            
     }
 
     float speed = 1.0f;
@@ -202,19 +277,6 @@ public class TouchManager_V3 : MonoBehaviour
         {
             StartCoroutine(StopStartSpeaking_DelayMethod_Button("探索モード。音声ガイドを聞きたい場所をダブルタップして下さい。"));
             buttonNavText.text = "Nav:N";
-        }
-    }
-
-    public void OnClick_Turn()
-    {
-        turnMode = !turnMode;
-        if (turnMode)
-        {
-            buttonTurnText.text = "Turn by turn: Y";
-        }
-        else
-        {
-            buttonTurnText.text = "Turn by turn: N";
         }
     }
     #endregion
@@ -266,6 +328,8 @@ public class TouchManager_V3 : MonoBehaviour
                 navMode = "Selection";
             else if (directionState == DirectionState.End)
                 navMode = "Follow";
+            else if (directionState == DirectionState.Guide)
+                navMode = "Guidede Exploration";
         }
         
         // On multi-touch device
@@ -274,7 +338,7 @@ public class TouchManager_V3 : MonoBehaviour
             tps[i].SetActive(false);
         }
 
-        if (Input.touchCount > 0)
+        if (Input.touchCount > 0 && touchEnabled)
         {
             //// order touches by x location from left to right. (No need now)
             //oTouches = (new List<Touch>(Input.touches)).OrderBy(order => order.position.x).ToList();
@@ -323,9 +387,6 @@ public class TouchManager_V3 : MonoBehaviour
                     Debug.Log("touch.deltaTime = " + touch.deltaTime);
                     if (touch.deltaTime > 2f)
                         ResetData_AllDetailLevel();
-
-                    
-
                 }
                 // triple tap: set up navigation
                 else if((touch.tapCount == 3) && (touch.phase == TouchPhase.Ended))
@@ -340,24 +401,36 @@ public class TouchManager_V3 : MonoBehaviour
                     
 
                 // single tap: detect correct node during navigation
-                if ((touch.tapCount == 1) && ((touch.phase == TouchPhase.Moved)||(touch.phase == TouchPhase.Began)))
+                if (touch.tapCount == 1)
                 {
-                    tp.GetComponent<Renderer>().material.SetColor("_Color", Color.magenta);
-                    // navigation mode
-                    if (RouteManager_Graph.Instance.IsDirectionMode())
+                    if ((touch.phase == TouchPhase.Moved) || (touch.phase == TouchPhase.Began))
                     {
-                        if (directionState == DirectionState.End)
+                        tp.GetComponent<Renderer>().material.SetColor("_Color", Color.magenta);
+                        // navigation mode
+                        if (RouteManager_Graph.Instance.IsDirectionMode())
                         {
-                            TouchRayHitFollow(vTouchPos, worldTouchPos);
+                            if (directionState == DirectionState.End)
+                            {
+                                TouchRayHitFollow(vTouchPos, worldTouchPos);
 
-                            if (!VoiceController.IsSpeaking())
-                                Debug.Log("TTS isn't speaking. Looking for nagivation touch.");
+                                if (!VoiceController.IsSpeaking())
+                                    Debug.Log("TTS isn't speaking. Looking for nagivation touch.");
+                                else
+                                    Debug.Log("TTS started speaking. Isn't looking for nagivation touch.");
+                            }
+                            else if (directionState == DirectionState.Guide)
+                                TouchRayHitFollow_GuidedExploration(vTouchPos, worldTouchPos);
+
                             else
-                                Debug.Log("TTS started speaking. Isn't looking for nagivation touch.");
+                                Debug.Log("directionState != DirectionState.End or Guide");
                         }
-                        else
-                            Debug.Log("directionState != DirectionState.End");
                     }
+                    else if (touch.phase == TouchPhase.Stationary) // in Guide, the touch will be recognized even if it is moved ahead of time
+                    {
+                        tp.GetComponent<Renderer>().material.SetColor("_Color", Color.green);
+                        if (RouteManager_Graph.Instance.IsDirectionMode() && (directionState == DirectionState.Guide))
+                            TouchRayHitFollow_GuidedExploration(vTouchPos, worldTouchPos);
+                    }  
                 }
 
                 //save Log
@@ -383,9 +456,44 @@ public class TouchManager_V3 : MonoBehaviour
     }
 
     #region Load data
-    void LoadCSV(string floor)
+
+    string LoadText(string textName)
     {
-        csvData = new Dictionary<string, ExhibitionScript>();
+        TextAsset txt = Resources.Load("Text/" + textName) as TextAsset;
+        StringReader reader = new StringReader(txt.text);
+
+        string output = "";
+        while (reader.Peek() > -1)
+        {
+            string line = reader.ReadLine();
+            output += line;
+        }
+        return output;
+    }
+
+    (List<string>, List<float>) LoadTextStrings(string textName)
+    {
+        TextAsset txt = Resources.Load("Text/" + textName) as TextAsset;
+        StringReader reader = new StringReader(txt.text);
+
+
+        List<string> outStrings = new List<string>();
+        List<float> outTimes = new List<float>();
+        while (reader.Peek() > -1)
+        {
+            string line = reader.ReadLine();
+            Debug.Log("Line = " + line);
+            Debug.Log("Word count = " + line.Count());
+            string[] lineSplit = line.Split('|');
+            outStrings.Add(lineSplit[1]);
+            outTimes.Add(float.Parse(lineSplit[0]));
+        }
+        return (outStrings, outTimes);
+    }
+
+    Dictionary<string, ExhibitionScript> LoadCSV(string floor)
+    {
+        Dictionary<string, ExhibitionScript> csvData = new Dictionary<string, ExhibitionScript>();
         csvFile = Resources.Load("CSV/" + floor) as TextAsset; /* Resouces/CSV下のCSV読み込み */
         StringReader reader = new StringReader(csvFile.text);
         height = 0;
@@ -422,9 +530,9 @@ public class TouchManager_V3 : MonoBehaviour
         //    //textBox3.Text += ("Key = {0}, Value = {1}", kvp.Key, kvp.Value);
         //    Debug.Log(string.Format("Key = {0}, Name = {1}", kvp.Key, kvp.Value.Name));
         //}
-    }
 
-    
+        return csvData;
+    }
 
     public void ResetData_AllDetailLevel()
     {
@@ -446,6 +554,25 @@ public class TouchManager_V3 : MonoBehaviour
                     msg.Add(kw);
         }
         return msg;
+    }
+
+    static string GetPathBasedOnOS()
+    {
+        if (Application.isEditor)
+        {
+            Debug.Log("is Editor");
+            return Application.dataPath;
+        }
+        else if (Application.isMobilePlatform || Application.isConsolePlatform)
+        {
+            Debug.Log("is Mobile");
+            return Application.persistentDataPath;
+        }
+        else // For standalone player.
+        {
+            Debug.Log("is Standalone");
+            return Application.persistentDataPath;
+        }
     }
 
     void LoadAudioClipsDct()
@@ -477,25 +604,6 @@ public class TouchManager_V3 : MonoBehaviour
             audioClips.Add(audioName, Resources.Load<AudioClip>("Audios/" + audioName));
         }
         Debug.Log(audioClips.Count() + " audio clips loaded");
-    }
-
-    static string GetPathBasedOnOS()
-    {
-        if (Application.isEditor)
-        {
-            Debug.Log("is Editor");
-            return Application.dataPath;
-        }
-        else if (Application.isMobilePlatform || Application.isConsolePlatform)
-        {
-            Debug.Log("is Mobile");
-            return Application.persistentDataPath;
-        }
-        else // For standalone player.
-        {
-            Debug.Log("is Standalone");
-            return Application.persistentDataPath;
-        }
     }
 
     void PlayAudioClip(string audioName)
@@ -590,7 +698,25 @@ public class TouchManager_V3 : MonoBehaviour
         return labelName;
     }
 
-    string GetExhibitInfo(Transform pMain, string floorName)
+    string GetGuideExhibitInfo(Transform pMain)
+    {
+        string labelName = pMain.name;
+        ExhibitionScript es = null;
+        if (csvGuideData.ContainsKey(labelName))
+            es = csvGuideData[labelName];
+
+        string msg = "";
+        if (es == null)
+            Debug.Log("No Guide ExhibitionScript");
+        else
+        {
+            navMode = "Guide";
+            msg = string.Format("{0}。　{1}。　{2}。", es.Name, es.Summary, es.Access);
+        }
+        return msg;
+    }
+
+    string GetExhibitInfo(Transform pMain, string floorName, bool typeOn = true, bool detailInstOn = true)
     {
         string labelName = pMain.name;
         ExhibitionScript es = null;
@@ -598,17 +724,15 @@ public class TouchManager_V3 : MonoBehaviour
             es = csvData[labelName];
 
         string msg = "";
+        if (es == null)
+            Debug.Log("No ExhibitionScript");
+
         if (es != null)
         {
             if ((prevEs != null) && (es.Tag != prevEs.Tag))
                 prevEs.ResetDetailLevel();
 
-            //if (Is1F7F(floorName))
-            //    msg = string.Format("{0}。 {1}", es.Name, es.Summary);
-
-            //else if (Is3F5F(floorName))
-
-            if ((es.Tag.Contains("SymbolZone"))|| (es.Tag.Contains("VisionariesLab"))) //閉鎖中
+            if ((es.Tag.Contains("SymbolZone")) || (es.Tag.Contains("VisionariesLab"))) //閉鎖中
             {
                 msg = string.Format("{0}。 {1}", es.Name, es.Summary);
             }
@@ -628,11 +752,15 @@ public class TouchManager_V3 : MonoBehaviour
                             msg += "タイプの展示があります。";
                         }
 
-                        else if(es.Keyword.Length>0)
+                        else if (es.Keyword.Length > 0 && typeOn)
+                        {
                             msg = string.Format("{0}。 {1}タイプの展示です。{2}", es.Name, es.Keyword, es.Access);
+                        }
                         else
                             msg = string.Format("{0}。　{1}", es.Name, es.Access);
-                        msg += " 詳細を聞くにはダブルタップしてください。";
+
+                        if(detailInstOn)
+                            msg += " 詳細を聞くにはダブルタップしてください。";
                     }
                     else
                     {
@@ -641,13 +769,12 @@ public class TouchManager_V3 : MonoBehaviour
                     }
                     es.IncrementDetailLevel();
                 }
-                else
+                else //No summary
                 {
-                    if (es.Keyword.Length > 0)
+                    if (es.Keyword.Length > 0 && typeOn)
                         msg = string.Format("{0}。　{1}タイプの展示です。{2}", es.Name, es.Keyword, es.Access);
                     else
-                        msg = string.Format("{0}。　" +
-                            "{1}", es.Name, es.Access);
+                        msg = string.Format("{0}。　{1}", es.Name, es.Access);
                 }
             }
 
@@ -778,6 +905,137 @@ public class TouchManager_V3 : MonoBehaviour
 
             if (RouteManager_Graph.Instance.IsSubRoute(touched))
                 TripleTouchStateChange(touched);
+        }
+    }
+    #endregion
+
+    #region single tap: follow a guided exploration
+    void TouchRayHitFollow_GuidedExploration(Vector3 vTouchPos, Vector3 worldTouchPos)
+    {
+        List<Transform> routeList = RouteManager_Graph.Instance.GetGuide_NavRoute();
+        List<string> routeDirectList = RouteManager_Graph.Instance.GetGuide_NavDirect();
+        List<string[]> routeDirectTurnList = RouteManager_Graph.Instance.GetGuide_NavDirectTurn();
+        List<string> routeDistance = RouteManager_Graph.Instance.GetGuide_NavDistance();
+
+        if ((routeDirectList == null) || (routeDirectList.Count == 0))
+            return;
+        if (VoiceController.IsSpeaking())
+            return;
+
+        Ray ray = Camera.main.ScreenPointToRay(vTouchPos);
+        RaycastHit vHit;
+
+        if (Physics.Raycast(ray.origin, ray.direction, out vHit))
+        {
+            Transform touched = vHit.transform;
+            Debug.Log("Follow Ray hit: " + touched.name + ". NavigationOrder: " + navigationOrder);
+
+            if (touched.name != routeList[navigationOrder].name)
+            {
+                // ErrorSound
+            }
+            else
+            {
+                hitObjectName = touched.name;
+                Debug.Log("Touched correct point. Name: " + routeList[navigationOrder].name);
+
+                if (navigationOrder < routeDirectList.Count)
+                {
+                    Transform tNow = routeList[navigationOrder], tNext = routeList[navigationOrder + 1];
+                    string msg = "";
+                    if (navigationOrder >= 0)
+                    {
+                        //msg = String.Format("You reached {0}'s entrance. Next, move {1} to {2}.",
+                        //    RouteManager.Instance.RouteString(tNow), routeDirectList[navigationOrder], RouteManager.Instance.RouteString(tNext));
+
+                        msg = GetGuideExhibitInfo(tNow);
+                        if (navigationOrder > 2 && tNow.name == "Entrance_5F") // entrance again
+                            msg = String.Format("{0}に到着しました。最後は、", csvGuideData[tNow.name].Name);
+
+                        if (navigationOrder > 0)// skip the first one. Encoded in script.
+                        {
+                            if (turnMode) // incorrect 
+                            {
+                                string next = "次の";
+
+                                string[] turnbyturnText = routeDirectTurnList[navigationOrder];
+                                string turnText, straightText;
+                                if (turnbyturnText.Length > 1)
+                                {
+                                    turnText = turnbyturnText[0];
+                                    straightText = turnbyturnText[1];
+                                }
+                                else
+                                {
+                                    turnText = "";
+                                    straightText = turnbyturnText[0];
+                                }
+
+                                string exhName = RouteManager_Graph.Instance.RouteString_Guide(tNext);
+                                if (exhName.Contains("ntrance"))
+                                    exhName = csvData[tNext.name].Name;
+                                if (exhName.Contains("0"))
+                                    exhName = csvData["Rocket"].Name.Split('。')[0];
+
+                                msg += String.Format("{0}、{3}{1}に{2}してください",
+                                turnText,
+                                exhName,
+                                straightText,
+                                next);
+                            }
+                            else //north up mode
+                            {
+                                string direction = routeDirectList[navigationOrder];
+                                string distance = routeDistance[navigationOrder];
+                                string direct_dist = "";
+                                if (distance.Contains("|"))
+                                {
+                                    string[] distances = distance.Split('|');
+                                    string[] directions = direction.Split(' ');
+                                    for (int i = 0; i < distances.Length; i++)
+                                    {
+                                        direct_dist += String.Format("「{0}」　 {1}", directions[i], distances[i]);
+                                        if (i != distances.Length - 1)
+                                            direct_dist += " センチ　";
+                                    }
+                                }
+                                else
+                                    direct_dist = String.Format("{0} {1}", direction, distance);
+                                msg += String.Format("「{0}先」の{1}に動かしてください",
+                                    direct_dist,
+                                    RouteManager_Graph.Instance.RouteString_Guide(tNext));
+                            }
+                                
+                        }                      
+                    }
+                    StartCoroutine(StopStartSpeaking_DelayMethod_NoDelay4DisableTouch(msg));
+                    navigationOrder++;
+                    Debug.Log("Speaking msg: " + msg);
+
+                    tNow.GetComponent<Renderer>().material.SetColor("_Color", Color.green);
+                    tNext.GetComponent<Renderer>().material.SetColor("_Color", Color.red);
+                }
+                else if (navigationOrder == routeDirectList.Count)
+                {
+                    Transform tNow = routeList[navigationOrder];
+                    string msg = "";
+                    msg = GetGuideExhibitInfo(tNow);
+                    if (tNow.name == "Entrance_5F") // entrance again
+                        msg = String.Format("{0}に到着しました。", csvGuideData[tNow.name].Name);
+
+                    //string msg = String.Format("You reached the destination: {0}. ", RouteManager.Instance.RouteString(tNow));
+
+                    tNow.GetComponent<Renderer>().material.SetColor("_Color", Color.green);
+
+                    msg += inst_Guide2;
+                    StartCoroutine(StopStartSpeaking_DelayMethod_NoDelay4DisableTouch(msg));
+                    navigationOrder = 0;
+                    Debug.Log(msg);
+
+                    // Change to mode exploration mode
+                    OnClick_Nav();
+                }
+            }
         }
     }
     #endregion
@@ -953,7 +1211,7 @@ public class TouchManager_V3 : MonoBehaviour
     }
     #endregion
 
-    private IEnumerator StopStartSpeaking_DelayMethod( string msg)
+    private IEnumerator StopStartSpeaking_DelayMethod(string msg)
     {
         float waitTime = 0.25f;
         if (VoiceController.IsSpeaking())
@@ -970,7 +1228,6 @@ public class TouchManager_V3 : MonoBehaviour
         yield return new WaitForSeconds(waitTimeStop);
         Debug.Log("Stop->Start:  Stop Coroutine, Wait for: " + waitTimeStop);
 
-
         if (!VoiceController.IsSpeaking())
         {
             Debug.Log("Stop->Start: Start after stopped");
@@ -983,6 +1240,106 @@ public class TouchManager_V3 : MonoBehaviour
         {
             Debug.Log("Stop->Start: Still speaking, cannot start");
         }
+    }
+
+    private IEnumerator StopStartSpeaking_DelayMethod_NoDelay4DisableTouch(string msg)
+    {
+        //float waitTime = 0.25f;
+        if (VoiceController.IsSpeaking())
+        {
+            VoiceController.StopSpeaking();
+            //yield return new WaitForSeconds(waitTime);
+        }
+        else
+        {
+            Debug.Log("Stop->Start: Not speaking, cannot stop");
+        }
+
+        float waitTimeStop = 0.5f;
+        yield return new WaitForSeconds(waitTimeStop);
+        Debug.Log("Stop->Start:  Stop Coroutine, Wait for: " + waitTimeStop);
+
+        if (!VoiceController.IsSpeaking())
+        {
+            Debug.Log("Stop->Start: Start after stopped");
+            VoiceController.StartSpeaking(msg);
+            //yield return new WaitForSeconds(waitTime);
+            //Debug.Log("Stop->Start: Start Coroutine, Wait for: " + waitTime);
+
+        }
+        else
+        {
+            Debug.Log("Stop->Start: Still speaking, cannot start");
+        }
+    }
+
+    private IEnumerator StopStartSpeaking_DelayMethod_Auto(List<string> msgs, List<float> delayTimes)
+    {
+        float speedOneWord = 0.18f;
+        if (VoiceController.IsSpeaking())
+            VoiceController.StopSpeaking();
+        else
+            Debug.Log("Stop->Start: Not speaking, cannot stop");
+
+        //int speakCount = 0;
+        //while (speakCount < msgs.Count())
+        for (int speakCount = 0; speakCount < msgs.Count; speakCount++)
+        {
+            if (!VoiceController.IsSpeaking())
+            {
+                Debug.Log("Start when not speaking");
+                yield return StartCoroutine(Speak_Pause(msgs[speakCount], delayTimes[speakCount] + msgs[speakCount].Count()* speedOneWord));
+                Debug.Log("Start Coroutine, Wait for: " + (delayTimes[speakCount]));
+                //speakCount += 1;
+
+            }
+            else
+            {
+                Debug.Log("Stop->Start: Still speaking, cannot start");
+                Debug.Log("speakCount = " + speakCount);
+            }
+        }
+        touchEnabled = true;
+    }
+
+    public void OnClick_SpeakNext()
+    {
+        StopStartSpeaking_DelayMethod_Button_Oneline(inst1,inst1_times);
+        if (speakOrder < inst1.Count() - 1)
+            speakOrder += 1;
+        else
+            speakOrder = 0;
+
+        SaveOneClickButton("OnClick_SpeakNext");
+    }
+
+    public void OnClick_SpeakLast()
+    {
+        if (speakOrder >= 1)
+            speakOrder -= 1;
+        else
+            speakOrder = 0;
+        StopStartSpeaking_DelayMethod_Button_Oneline(inst1, inst1_times);
+
+        SaveOneClickButton("OnClick_SpeakLast");
+    }
+
+    private void StopStartSpeaking_DelayMethod_Button_Oneline(List<string> msgs, List<float> delayTimes)
+    {
+        if (VoiceController.IsSpeaking())
+            VoiceController.StopSpeaking();
+
+        Debug.Log("Start when not speaking");
+        StartCoroutine(Speak_Pause(msgs[speakOrder], 0));
+        Debug.Log("Start Coroutine, Wait for: " + (delayTimes[speakOrder]));
+
+    }
+
+    private IEnumerator Speak_Pause(string msg, float time)
+    {
+        yield return new WaitForSeconds(0.5f);
+        VoiceController.StartSpeaking(msg);
+        yield return new WaitForSeconds(time);
     }
 
     private IEnumerator StopStartSpeaking_DelayMethod_Button(string msg)
@@ -1037,13 +1394,7 @@ public class TouchManager_V3 : MonoBehaviour
         else
             return (float)(-0.0014 * (float)Math.Pow((float)len, 2) + 0.2833 * len - 0.1726 + 0.5);
     }
-
-    void PlayAudioFile()
-    {
-
-    }
 }
-
 
 public class ExhibitionScript
 {
