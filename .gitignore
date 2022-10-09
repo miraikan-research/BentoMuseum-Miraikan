@@ -13,7 +13,8 @@
 /[Ll]ogs/
 /[Uu]ser[Ss]ettings/
 /Assets/Scenes_Obsolete/
-/Assets/Scripts/*Touch_V1_CalibPoints*/
+/Assets/Scripts/Touch_V1_CalibPoints/
+/Assets/Scripts/Touch_V1_CalibPoints*/
 
 
 # MemoryCaptures can get excessive in size.
