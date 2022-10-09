@@ -1,6 +1,6 @@
 # BentoMuseum
 
-### [Project Page](https://xiyue-w.github.io/projects/BentoMuseum) | [Paper](https://xiyue-w.github.io/assets/pdf/XWang_ASSETS_2022_BentoMuseum.pdf) | [Data](https://www.thingiverse.com/thing:5555502)
+### [Project Page](https://xiyue-w.github.io/projects/BentoMuseum) | [Paper](https://xiyue-w.github.io/assets/pdf/ASSETS2022_BentoMuseum_AuthorVersion.pdf) | [Data](https://www.thingiverse.com/thing:5555502)
  [BentoMuseum: 3D and Layered Interactive Museum Map for Blind Visitors](https://doi.org/10.1145/3517428.3544811)  
  [Xiyue Wang](https://xiyue-w.github.io/)<sup>1</sup>,
  [Seita Kayukawa](https://wotipati.github.io/)<sup>1</sup>,
