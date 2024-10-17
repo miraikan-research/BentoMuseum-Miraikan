@@ -53,7 +53,7 @@ Text-to-speech audio explanations are given when a user touches the interactive 
       - UIFileSharingEnabled (Application supports iTunes file sharing)
       - LSSupportsOpeningDocumentsInPlace (Supports opening documents in place)
     ```
-6. In Xcode, select your target system, build and run.
+6. In Xcode, sign in to the developer account (enable "Automatically manage signing), select your target system, build and run.
 
 ## Contact
 If you have any question in using the project, please contact Xiyue Wang (wang.xiyue@lab.miraikan.jst.go.jp). We are happy to explain the project to you.	
